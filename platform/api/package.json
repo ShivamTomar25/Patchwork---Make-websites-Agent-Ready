@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/server.ts",
+    "start:render": "prisma migrate deploy --schema prisma/schema.prisma && npm run start",
     "dev": "DATABASE_URL=${DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_platform} API_PORT=${API_PORT:-4200} tsx src/server.ts",
     "build": "npm run prisma:generate && tsc --noEmit",
     "prisma:generate": "DATABASE_URL=${DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_platform} prisma generate --schema prisma/schema.prisma",

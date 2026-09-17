@@ -27,21 +27,75 @@ Prisma clients, builds, local research output and browser test artifacts.
 Placeholder `.env.example` and `.env.*.example` files remain versioned.
 Generated graphs/results can be recreated using the research commands.
 
-## Render: API and database
+## Render: manual free API and database
 
-1. Create a Blueprint from the GitHub repository using the root `render.yaml`.
-2. The Blueprint selects a **paid Starter web service and Basic PostgreSQL**.
-   Review Render's displayed costs before creating resources.
-3. Set `WEB_URL` to the exact Vercel production origin, for example
-   `https://your-project.vercel.app`, without a trailing slash. Reserve the Vercel
-   project name first, or update this value after Vercel assigns the URL.
-4. Render generates the JWT and internal agent secrets and supplies `DATABASE_URL`.
-   `PORT` and `RENDER_EXTERNAL_URL` are supplied by Render. Do not set `API_PORT`.
-5. Migrations run before deployment; the start command runs the API using `tsx`.
-   The install command includes development dependencies because Prisma,
-   TypeScript and `tsx` are required by this setup.
-6. Verify `https://YOUR-SERVICE.onrender.com/api/v1/health` returns `data.ok: true`.
-   This endpoint checks the process; signup/login additionally verify the database.
+Create the resources manually; a Blueprint is not required. The root
+`render.yaml` is an optional equivalent and also selects free plans.
+
+### 1. Create PostgreSQL
+
+Choose **New → Postgres**, name it `patchwork-db`, set the database name to
+`patchwork_platform`, and choose **Free**. Copy the **Internal Database URL**
+from its connection details. Keep this private. Use the same region for the API.
+
+### 2. Create the web service
+
+Choose **New → Web Service**, connect
+`ShivamTomar25/Patchwork---Make-websites-Agent-Ready`, and enter:
+
+| Setting | Value |
+| --- | --- |
+| Name | `patchwork-api` |
+| Branch | `main` |
+| Runtime | Node |
+| Region | Same as PostgreSQL |
+| Root Directory | Leave blank (repository root) |
+| Instance Type | Free |
+| Build Command | `npm ci --include=dev && npm run build -w @patchwork/platform-api` |
+| Start Command | `npm run start:render -w @patchwork/platform-api` |
+| Health Check Path | `/api/v1/health` |
+
+Leave Pre-Deploy Command unset: it is a paid feature. `start:render` applies
+pending Prisma migrations before starting the API, and aborts startup if a
+migration fails. Already-applied migrations are not repeated. Startup also checks
+for migrations when the free service wakes up. Keep future schema changes
+compatible with the previous application version during deployment.
+
+### 3. Set environment variables before deploying
+
+| Variable | Value |
+| --- | --- |
+| `NODE_VERSION` | `22` |
+| `NODE_ENV` | `production` |
+| `APP_ENV` | `production` |
+| `DATABASE_URL` | Internal Database URL from step 1 |
+| `WEB_URL` | Actual Vercel production origin, e.g. `https://your-project.vercel.app`, without a trailing slash |
+| `JWT_SECRET_KEY` | A random secret of at least 32 characters |
+| `PATCHWORK_INTERNAL_AGENT_TOKEN` | A second, independent random secret |
+
+Generate each secret separately on your own machine with:
+
+```sh
+openssl rand -hex 32
+```
+
+Paste the values only into Render's environment settings. Render supplies `PORT`
+and `RENDER_EXTERNAL_URL`; do not set `API_PORT`. The build deliberately installs
+development dependencies because Prisma, TypeScript and `tsx` are needed.
+
+### 4. Deploy and connect Vercel
+
+Create the web service and wait for it to become live. Open
+`https://YOUR-SERVICE.onrender.com/api/v1/health` and check for `data.ok: true`.
+This checks the process; signup/login additionally verify database access.
+Then follow the Vercel proxy steps below.
+
+Free services spin down after 15 minutes of inactivity, so waking them can make
+the first request slow. Free PostgreSQL has 1 GB storage, no backups, and expires
+30 days after creation; arrange a data export/migration or upgrade before expiry.
+Only one free PostgreSQL database is allowed per workspace. See
+[Render's free-plan limits](https://render.com/docs/free) and
+[deployment commands](https://render.com/docs/deploys).
 
 Do not run `platform:setup` or `platform:seed` against the hosted database: the
 local seed creates publicly documented demo credentials. Create your hosted

@@ -1,12 +1,11 @@
-# Deploys the central platform API only. See docs/DEPLOYMENT.md.
+# Optional Blueprint equivalent of the manual free setup in docs/DEPLOYMENT.md.
 services:
   - type: web
     name: patchwork-api
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci --include=dev && npm run build -w @patchwork/platform-api
-    preDeployCommand: npm run db:migrate -w @patchwork/platform-api
-    startCommand: npm run start -w @patchwork/platform-api
+    startCommand: npm run start:render -w @patchwork/platform-api
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_VERSION
@@ -27,5 +26,5 @@ services:
         sync: false
 databases:
   - name: patchwork-db
-    plan: basic-256mb
+    plan: free
     databaseName: patchwork_platform
