@@ -1,0 +1,32 @@
+{
+  "name": "@patchwork/repair",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build-graphs": "tsx src/cli/index.ts build-graphs",
+    "validate-graphs": "tsx src/cli/index.ts validate-graphs",
+    "audit-localization": "tsx src/cli/index.ts audit-localization",
+    "generate": "tsx src/cli/index.ts generate",
+    "validate": "tsx src/cli/index.ts validate",
+    "replay": "tsx src/cli/index.ts replay",
+    "pilot": "tsx src/cli/index.ts pilot",
+    "sandbox:test": "tsx src/cli/index.ts runtime-sandbox-test",
+    "replay:runtime": "tsx src/cli/index.ts runtime-replay",
+    "regression": "tsx src/cli/index.ts runtime-regression",
+    "rollback:runtime": "tsx src/cli/index.ts runtime-rollback",
+    "pilot:runtime": "tsx src/cli/index.ts runtime-pilot",
+    "resume": "tsx src/cli/index.ts resume"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1",
+    "zod": "^4.0.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4",
+    "tsx": "^4.20.3"
+  }
+}

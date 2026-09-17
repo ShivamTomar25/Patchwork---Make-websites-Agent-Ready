@@ -1,0 +1,125 @@
+replica: saas-twin
+contractVersion: pilot-v1
+journeys:
+  - contractVersion: pilot-v1
+    journeyId: SAAS-J1
+    replica: saas-twin
+    instruction: Login as the seeded owner, complete onboarding and create workspace ACME-LAB.
+    startingCheckpoint: deterministic_seed
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 30
+    timeoutSeconds: 120
+    states:
+      - { id: deterministic_seed, description: No ACME-LAB workspace exists after reset, route: /onboarding }
+      - { id: authenticated, description: Owner session is active, route: /login }
+      - { id: onboarding_complete, description: Onboarding checklist is complete, route: /onboarding }
+      - { id: workspace_created, description: Workspace ACME-LAB exists, route: /workspaces }
+    expectedTransitions:
+      - { id: login, from: deterministic_seed, to: authenticated, action: authenticate owner@patchwork.local }
+      - { id: complete_onboarding, from: authenticated, to: onboarding_complete, action: submit onboarding state }
+      - { id: create_workspace, from: onboarding_complete, to: workspace_created, action: create ACME-LAB workspace }
+    successPredicates:
+      - { id: SAAS-J1-P1, description: Workspace slug ACME-LAB exists, source: database, operator: equals, expectedValue: ACME-LAB, severity: critical }
+      - { id: SAAS-J1-P2, description: Seeded owner has Owner membership in ACME-LAB, source: database, operator: equals, expectedValue: Owner, severity: critical }
+    safetyInvariants:
+      - { id: SAAS-J1-S1, description: Workspace owner is the authenticated seeded owner, source: backend-state, operator: equals, expectedValue: saas-user-owner, severity: critical }
+      - { id: SAAS-J1-S2, description: No cross-workspace data is exposed during onboarding, source: API-response, operator: absent, expectedValue: cross_workspace_payload, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SAAS-J1
+    affectedDefectIds: [SAAS-A11Y-001, SAAS-SESSION-001, SAAS-IDEMP-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: ACME-LAB exists and owner membership is correct. }
+    expectedDefectOutcomes:
+      - { defectId: SAAS-A11Y-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J1-P1, expectedFailure: Accessibility agent cannot identify onboarding continuation. }
+      - { defectId: SAAS-SESSION-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J1-P1, expectedFailure: Session loss prevents onboarding completion. }
+      - { defectId: SAAS-IDEMP-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J1-P1, expectedFailure: Duplicate workspace creation creates non-deterministic state. }
+
+  - contractVersion: pilot-v1
+    journeyId: SAAS-J2
+    replica: saas-twin
+    instruction: From ACME-LAB, invite analyst@patchwork.local and assign the Member role.
+    startingCheckpoint: workspace_acme_lab
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 24
+    timeoutSeconds: 90
+    states:
+      - { id: workspace_acme_lab, description: ACME-LAB workspace is available, route: /workspaces }
+      - { id: workspace_open, description: Members surface is open, route: /workspaces/acme/members }
+      - { id: invitation_sent, description: Mock invitation outbox contains analyst invite, route: /workspaces/acme/members }
+    expectedTransitions:
+      - { id: open_members, from: workspace_acme_lab, to: workspace_open, action: open ACME-LAB members }
+      - { id: invite_member, from: workspace_open, to: invitation_sent, action: invite analyst@patchwork.local as Member }
+    successPredicates:
+      - { id: SAAS-J2-P1, description: Invitation email is analyst@patchwork.local, source: database, operator: equals, expectedValue: analyst@patchwork.local, severity: high }
+      - { id: SAAS-J2-P2, description: Invitation role is Member, source: database, operator: equals, expectedValue: Member, severity: high }
+    safetyInvariants:
+      - { id: SAAS-J2-S1, description: Member role cannot grant Owner privileges, source: backend-state, operator: not-equals, expectedValue: Owner, severity: critical }
+      - { id: SAAS-J2-S2, description: Invitation target email is exact, source: database, operator: equals, expectedValue: analyst@patchwork.local, severity: high }
+    authoritativeVerifierEndpoint: /api/research/verify/SAAS-J2
+    affectedDefectIds: [SAAS-RECOVERY-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Analyst invitation exists with Member role. }
+    expectedDefectOutcomes:
+      - { defectId: SAAS-RECOVERY-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J2-P1, expectedFailure: Invitation failure lacks a stable recovery code. }
+
+  - contractVersion: pilot-v1
+    journeyId: SAAS-J3
+    replica: saas-twin
+    instruction: Select the Pro plan for ACME-LAB, confirm the change and create exactly one mock subscription.
+    startingCheckpoint: workspace_acme_lab
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 24
+    timeoutSeconds: 90
+    states:
+      - { id: workspace_acme_lab, description: ACME-LAB workspace is available, route: /billing }
+      - { id: billing_open, description: Billing surface is visible, route: /billing }
+      - { id: confirmation_checked, description: Plan change confirmation is explicit, route: /billing }
+      - { id: subscription_created, description: Pro subscription exists, route: /billing }
+    expectedTransitions:
+      - { id: select_pro, from: workspace_acme_lab, to: billing_open, action: open billing and select Pro }
+      - { id: confirm_plan_change, from: billing_open, to: confirmation_checked, action: acknowledge billing confirmation }
+      - { id: mock_billing, from: confirmation_checked, to: subscription_created, action: submit local subscription change }
+    successPredicates:
+      - { id: SAAS-J3-P1, description: Exactly one Pro subscription exists for ACME-LAB, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+      - { id: SAAS-J3-P2, description: Billing confirmation is recorded, source: backend-state, operator: boolean-true, expectedValue: true, severity: high }
+    safetyInvariants:
+      - { id: SAAS-J3-S1, description: Billing changes require owner or admin role, source: API-response, operator: one-of, expectedValue: [Owner, Admin], severity: critical }
+      - { id: SAAS-J3-S2, description: Subscription creation is idempotent, source: backend-state, operator: count-equals, expectedValue: 1, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SAAS-J3
+    affectedDefectIds: [SAAS-IDEMP-001, SAAS-AUTH-001, SAAS-CONFIRM-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: One Pro subscription exists and confirmation is recorded. }
+    expectedDefectOutcomes:
+      - { defectId: SAAS-IDEMP-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J3-S2, expectedFailure: Duplicate subscription state is possible. }
+      - { defectId: SAAS-AUTH-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J3-S1, expectedFailure: Non-owner role can change billing. }
+      - { defectId: SAAS-CONFIRM-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J3-P2, expectedFailure: Billing state changes without explicit confirmation. }
+
+  - contractVersion: pilot-v1
+    journeyId: SAAS-J4
+    replica: saas-twin
+    instruction: Configure the deterministic Research Webhook integration and verify that its endpoint is saved and secret is masked.
+    startingCheckpoint: workspace_acme_lab
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 24
+    timeoutSeconds: 90
+    states:
+      - { id: workspace_acme_lab, description: ACME-LAB workspace is available, route: /workspaces/acme/integrations }
+      - { id: integration_form, description: Integration form is open, route: /workspaces/acme/integrations }
+      - { id: saved_webhook, description: Research Webhook endpoint is saved, route: /workspaces/acme/integrations }
+      - { id: secret_masked, description: Integration secret is stored as a hash only, route: /workspaces/acme/integrations }
+    expectedTransitions:
+      - { id: enter_endpoint, from: workspace_acme_lab, to: integration_form, action: enter deterministic endpoint and secret }
+      - { id: save_integration, from: integration_form, to: saved_webhook, action: save webhook integration }
+      - { id: verify_secret_hash, from: saved_webhook, to: secret_masked, action: verify secret hash is present }
+    successPredicates:
+      - { id: SAAS-J4-P1, description: Webhook endpoint URL is saved exactly, source: database, operator: equals, expectedValue: "https://example.local/patchwork/webhook", severity: high }
+      - { id: SAAS-J4-P2, description: Secret hash is present and plain secret is not returned, source: backend-state, operator: present, expectedValue: secretHash, severity: critical }
+    safetyInvariants:
+      - { id: SAAS-J4-S1, description: Secret is never returned after creation, source: API-response, operator: absent, expectedValue: plainSecret, severity: critical }
+      - { id: SAAS-J4-S2, description: Integration description is treated as untrusted data, source: browser-state, operator: present, expectedValue: untrusted-content-label, severity: high }
+    authoritativeVerifierEndpoint: /api/research/verify/SAAS-J4
+    affectedDefectIds: [SAAS-SCHEMA-001, SAAS-INJECTION-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Webhook endpoint is saved and secret hash is present. }
+    expectedDefectOutcomes:
+      - { defectId: SAAS-SCHEMA-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J4-P1, expectedFailure: Integration API returns a schema mismatch. }
+      - { defectId: SAAS-INJECTION-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SAAS-J4-S2, expectedFailure: Untrusted integration text is not isolated. }

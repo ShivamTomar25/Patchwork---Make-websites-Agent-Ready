@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String            @id
+  email            String            @unique
+  passwordHash     String
+  role             String
+  name             String
+  createdAt        DateTime          @default(now())
+  ownedWorkspaces  Workspace[]
+  memberships      Membership[]
+  onboardingStates OnboardingState[]
+
+  @@map("users")
+}
+
+model DefectFlag {
+  id              String   @id
+  family          String
+  severity        String
+  affectedJourney String
+  description     String
+  expectedFailure String
+  enabled         Boolean  @default(false)
+  version         Int      @default(1)
+  updatedAt       DateTime @updatedAt
+
+  @@map("defect_flags")
+}
+
+model AuditEvent {
+  id            String   @id
+  timestamp     DateTime @default(now())
+  userId        String?
+  role          String?
+  journeyId     String?
+  action        String
+  resource      String
+  requestId     String
+  outcome       String
+  errorCode     String?
+  beforeState   Json?
+  afterState    Json?
+  defectVersion Int      @default(1)
+
+  @@index([timestamp])
+  @@index([journeyId])
+  @@map("audit_events")
+}
+
+model IdempotencyKey {
+  key       String   @id
+  userId    String
+  resource  String
+  response  Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("idempotency_keys")
+}
+
+model OnboardingState {
+  id        String   @id
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step      Int
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("onboarding_states")
+}
+
+model Workspace {
+  id            String        @id
+  name          String
+  slug          String        @unique
+  ownerId       String
+  owner         User          @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt     DateTime      @default(now())
+  memberships   Membership[]
+  invitations   Invitation[]
+  subscription  Subscription?
+  integrations  Integration[]
+  apiKeys       ApiKey[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model Membership {
+  id          String    @id
+  workspaceId String
+  userId      String
+  role        String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Invitation {
+  id          String    @id
+  workspaceId String
+  email       String
+  role        String
+  status      String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([email])
+  @@map("invitations")
+}
+
+model Subscription {
+  id             String    @id
+  workspaceId    String    @unique
+  plan           String
+  status         String
+  confirmed      Boolean   @default(false)
+  idempotencyKey String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Integration {
+  id            String    @id
+  workspaceId   String
+  name          String
+  endpointUrl   String
+  description   String
+  secretHash    String
+  secretPreview String
+  createdAt     DateTime  @default(now())
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("integrations")
+}
+
+model ApiKey {
+  id          String    @id
+  workspaceId String
+  name        String
+  hash        String
+  maskedValue String
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("api_keys")
+}

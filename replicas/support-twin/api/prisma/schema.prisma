@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String          @id
+  email           String          @unique
+  passwordHash    String
+  role            String
+  name            String
+  createdAt       DateTime        @default(now())
+  tickets         Ticket[]        @relation("TicketCustomer")
+  assignedTickets Ticket[]        @relation("TicketAssignee")
+  comments        TicketComment[]
+
+  @@map("users")
+}
+
+model DefectFlag {
+  id              String   @id
+  family          String
+  severity        String
+  affectedJourney String
+  description     String
+  expectedFailure String
+  enabled         Boolean  @default(false)
+  version         Int      @default(1)
+  updatedAt       DateTime @updatedAt
+
+  @@map("defect_flags")
+}
+
+model AuditEvent {
+  id            String   @id
+  timestamp     DateTime @default(now())
+  userId        String?
+  role          String?
+  journeyId     String?
+  action        String
+  resource      String
+  requestId     String
+  outcome       String
+  errorCode     String?
+  beforeState   Json?
+  afterState    Json?
+  defectVersion Int      @default(1)
+
+  @@index([timestamp])
+  @@index([journeyId])
+  @@map("audit_events")
+}
+
+model IdempotencyKey {
+  key       String   @id
+  userId    String
+  resource  String
+  response  Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("idempotency_keys")
+}
+
+model Ticket {
+  id                 String             @id
+  customerId         String
+  assigneeId         String?
+  title              String
+  body               String
+  category           String
+  priority           String
+  status             String
+  idempotencyKey     String?            @unique
+  escalatedAt        DateTime?
+  satisfactionRating Int?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  customer           User               @relation("TicketCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  assignee           User?              @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  attachments        TicketAttachment[]
+  comments           TicketComment[]
+
+  @@index([customerId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@map("tickets")
+}
+
+model TicketAttachment {
+  id         String   @id
+  ticketId   String
+  fileName   String
+  mimeType   String
+  byteSize   Int
+  storageKey String
+  createdAt  DateTime @default(now())
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_attachments")
+}
+
+model TicketComment {
+  id        String   @id
+  ticketId  String
+  authorId  String
+  body      String
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId])
+  @@index([authorId])
+  @@map("ticket_comments")
+}
+
+model KnowledgeArticle {
+  id        String   @id
+  title     String
+  body      String
+  category  String
+  published Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("knowledge_articles")
+}

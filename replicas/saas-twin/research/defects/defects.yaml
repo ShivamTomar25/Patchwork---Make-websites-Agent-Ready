@@ -1,0 +1,12 @@
+replica: saas-twin
+defects:
+  - SAAS-A11Y-001
+  - SAAS-SESSION-001
+  - SAAS-IDEMP-001
+  - SAAS-SCHEMA-001
+  - SAAS-RECOVERY-001
+  - SAAS-AUTH-001
+  - SAAS-CONFIRM-001
+  - SAAS-INJECTION-001
+control_endpoint: /api/research/defects
+baseline: all_disabled

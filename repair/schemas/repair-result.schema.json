@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://patchwork.local/schemas/repair-result.schema.json",
+  "title": "PATCHWORK Repair Pilot Result",
+  "type": "object",
+  "required": ["manifest", "localization", "failureCones", "patches", "validation", "pairedReplay"],
+  "properties": {
+    "manifest": { "type": "object" },
+    "localization": { "type": "array" },
+    "failureCones": { "type": "array" },
+    "patches": { "type": "array" },
+    "validation": { "type": "array" },
+    "pairedReplay": { "type": "array" }
+  }
+}

@@ -1,0 +1,509 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  owner
+  admin
+  engineer
+  viewer
+}
+
+enum ProjectMode {
+  scan
+  repair
+}
+
+enum EnvironmentType {
+  local
+  staging
+  production
+}
+
+enum HealthStatus {
+  unknown
+  healthy
+  degraded
+  down
+}
+
+enum AgentKind {
+  scripted
+  accessibility_a
+  accessibility_b
+  screenshot
+  tool
+}
+
+enum ExperimentStatus {
+  draft
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum PatchStatus {
+  proposed
+  approved
+  rejected
+  certified
+}
+
+enum ConfirmationStatus {
+  pending
+  running
+  certified
+  not_certified
+}
+
+enum CertificateStatus {
+  certified
+  not_certified
+  expired
+}
+
+enum IntegrationType {
+  github
+  slack
+  webhook
+  openapi
+}
+
+enum SubscriptionPlan {
+  scan
+  repair
+  enterprise
+}
+
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  name            String
+  passwordHash    String
+  emailVerifiedAt DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  memberships     Membership[]
+  sessions        Session[]
+  emailTokens     EmailToken[]
+  auditLogs       AuditLog[]
+}
+
+model Organization {
+  id             String               @id @default(cuid())
+  name           String
+  slug           String               @unique
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+  memberships    Membership[]
+  projects       Project[]
+  experiments    Experiment[]
+  certificates   Certificate[]
+  reports        Report[]
+  integrations   Integration[]
+  auditLogs      AuditLog[]
+  subscriptions  Subscription[]
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailToken {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model MailOutbox {
+  id        String    @id @default(cuid())
+  toEmail   String
+  subject   String
+  body      String
+  status    String    @default("queued")
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Project {
+  id              String               @id @default(cuid())
+  organizationId  String
+  name            String
+  mode            ProjectMode          @default(scan)
+  repositoryUrl   String?
+  repositoryStatus String              @default("not_connected")
+  synthetic       Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  deletedAt       DateTime?
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environments    Environment[]
+  journeys        Journey[]
+  agents          AgentConfiguration[]
+  experiments     Experiment[]
+  certificates    Certificate[]
+  reports         Report[]
+
+  @@index([organizationId])
+}
+
+model Environment {
+  id             String          @id @default(cuid())
+  organizationId String
+  projectId      String
+  name           String
+  url            String
+  apiUrl         String?
+  type           EnvironmentType @default(staging)
+  branch         String?
+  commitSha      String?
+  resetCapable   Boolean         @default(false)
+  healthStatus   HealthStatus    @default(unknown)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model Journey {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  projectId          String
+  name               String
+  instruction        String
+  startCheckpoint    String
+  timeoutSeconds     Int                @default(120)
+  tokenBudget        Int                @default(20000)
+  surfaces           String[]           @default([])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  predicates         JourneyPredicate[]
+  experimentJourneys ExperimentJourney[]
+  steps              TrajectoryStep[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model JourneyPredicate {
+  id        String   @id @default(cuid())
+  journeyId String
+  type      String
+  text      String
+  required  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  journey   Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  @@index([journeyId])
+}
+
+model AgentConfiguration {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  projectId          String
+  name               String
+  kind               AgentKind
+  provider           String?
+  model              String?
+  enabled            Boolean            @default(true)
+  secretConfigured   Boolean            @default(false)
+  settings           Json
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  experimentAgents   ExperimentAgent[]
+  steps              TrajectoryStep[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model Experiment {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  projectId          String
+  name               String
+  status             ExperimentStatus    @default(draft)
+  seeds              Int[]               @default([])
+  defects            Json
+  surfaces           String[]            @default([])
+  searchBudget       Int                 @default(0)
+  confirmationBudget Int                 @default(0)
+  reviewRequired     Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runs               ExperimentRun[]
+  journeys           ExperimentJourney[]
+  agents             ExperimentAgent[]
+
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model ExperimentJourney {
+  experimentId String
+  journeyId    String
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  journey      Journey    @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+
+  @@id([experimentId, journeyId])
+}
+
+model ExperimentAgent {
+  experimentId String
+  agentId      String
+  experiment   Experiment         @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  agent        AgentConfiguration @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([experimentId, agentId])
+}
+
+model ExperimentRun {
+  id             String             @id @default(cuid())
+  organizationId String
+  experimentId   String
+  status         ExperimentStatus   @default(queued)
+  engineMode     String             @default("mock")
+  externalExperimentId String?
+  externalRunId  String?
+  summaryMetrics Json?
+  exportDirectory String?
+  certified      Boolean            @default(false)
+  successRate    Float              @default(0)
+  violationCount Int                @default(0)
+  latencyMs      Int                @default(0)
+  inputTokens    Int                @default(0)
+  outputTokens   Int                @default(0)
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  experiment     Experiment         @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  events         ExperimentEvent[]
+  steps          TrajectoryStep[]
+  failures       Failure[]
+  patches        PatchCandidate[]
+  confirmations  Confirmation[]
+  certificates   Certificate[]
+  reports        Report[]
+
+  @@index([organizationId])
+  @@index([experimentId])
+  @@index([engineMode])
+  @@index([externalExperimentId])
+}
+
+model ExperimentEvent {
+  id        String        @id @default(cuid())
+  runId     String
+  type      String
+  message   String
+  payload   Json
+  createdAt DateTime      @default(now())
+  run       ExperimentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model TrajectoryStep {
+  id          String              @id @default(cuid())
+  runId       String
+  journeyId   String?
+  agentId     String?
+  index       Int
+  url         String
+  action      String
+  observation String
+  screenshot  String?
+  toolCall    Json?
+  verifier    Json
+  latencyMs   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  run         ExperimentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  journey     Journey?            @relation(fields: [journeyId], references: [id])
+  agent       AgentConfiguration? @relation(fields: [agentId], references: [id])
+
+  @@index([runId])
+}
+
+model Failure {
+  id              String        @id @default(cuid())
+  runId           String
+  firstPredicate  String
+  severity        String
+  affectedComponents String[]   @default([])
+  evidence        Json
+  createdAt       DateTime      @default(now())
+  run             ExperimentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model PatchCandidate {
+  id          String            @id @default(cuid())
+  runId       String
+  title       String
+  summary     String
+  diff        String
+  cost        Int               @default(0)
+  rollback    String
+  status      PatchStatus       @default(proposed)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  run         ExperimentRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  validations PatchValidation[]
+
+  @@index([runId])
+}
+
+model PatchValidation {
+  id        String         @id @default(cuid())
+  patchId   String
+  name      String
+  status    String
+  evidence  Json
+  createdAt DateTime       @default(now())
+  patch     PatchCandidate @relation(fields: [patchId], references: [id], onDelete: Cascade)
+
+  @@index([patchId])
+}
+
+model Confirmation {
+  id          String             @id @default(cuid())
+  runId       String
+  status      ConfirmationStatus @default(pending)
+  successBound Float             @default(0)
+  safetyBound  Float             @default(0)
+  notes       String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  run         ExperimentRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model Certificate {
+  id             String            @id @default(cuid())
+  organizationId String
+  projectId      String?
+  runId          String?
+  scope          String
+  status         CertificateStatus
+  evidence       Json
+  issuedAt       DateTime          @default(now())
+  expiresAt      DateTime?
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?          @relation(fields: [projectId], references: [id])
+  run            ExperimentRun?    @relation(fields: [runId], references: [id])
+
+  @@index([organizationId])
+}
+
+model Report {
+  id             String         @id @default(cuid())
+  organizationId String
+  projectId      String?
+  runId          String?
+  title          String
+  summary        String
+  body           Json
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?       @relation(fields: [projectId], references: [id])
+  run            ExperimentRun? @relation(fields: [runId], references: [id])
+
+  @@index([organizationId])
+}
+
+model Integration {
+  id             String          @id @default(cuid())
+  organizationId String
+  type           IntegrationType
+  name           String
+  status         String          @default("not_connected")
+  config         Json
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String
+  targetType     String
+  targetId       String?
+  metadata       Json
+  createdAt      DateTime     @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Subscription {
+  id             String           @id @default(cuid())
+  organizationId String
+  plan           SubscriptionPlan
+  status         String           @default("trial")
+  renewalAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}

@@ -1,0 +1,7 @@
+name: saas-twin-pilot-study-example
+replica: saas-twin
+created_for: local PATCHWORK pilot only
+not_final_preregistration: true
+seed: 42
+journeys: [SAAS-J1, SAAS-J2, SAAS-J3, SAAS-J4]
+defect_policy: enable_one_known_defect_per_trial_then_reset

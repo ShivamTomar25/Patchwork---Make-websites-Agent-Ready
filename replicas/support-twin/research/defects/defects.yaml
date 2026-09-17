@@ -1,0 +1,12 @@
+replica: support-twin
+defects:
+  - SUPPORT-A11Y-001
+  - SUPPORT-SESSION-001
+  - SUPPORT-IDEMP-001
+  - SUPPORT-SCHEMA-001
+  - SUPPORT-RECOVERY-001
+  - SUPPORT-AUTH-001
+  - SUPPORT-CONFIRM-001
+  - SUPPORT-INJECTION-001
+control_endpoint: /api/research/defects
+baseline: all_disabled

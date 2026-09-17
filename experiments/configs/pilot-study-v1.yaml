@@ -1,0 +1,61 @@
+manifestVersion: pilot-study-v1
+studyType: pilot
+label: PATCHWORK local pilot study v1
+frozenAt: "2026-08-03T00:00:00.000Z"
+siteCommit: not-a-git-worktree
+harnessVersion: agents-pilot-v1
+liveAgentsEnabledWhenProviderKeysExist: true
+concurrency: 1
+seeds: [1, 2, 3]
+surfaces: [frontend, api, research-verifier]
+modeDefaults:
+  mock:
+    enabled: true
+    provider: deterministic-mock
+  live:
+    enabled: false
+    provider: openai-compatible-placeholder
+agents:
+  - { id: scripted, provider: scripted-playwright, model: none, promptVersion: scripted-2026-08-03 }
+  - { id: accessibility-a, provider: TEXT_AGENT_A_BASE_URL, model: TEXT_AGENT_A_MODEL, promptVersion: accessibility-a-v1 }
+  - { id: accessibility-b, provider: TEXT_AGENT_B_BASE_URL, model: TEXT_AGENT_B_MODEL, promptVersion: accessibility-b-v1 }
+  - { id: screenshot, provider: VISION_BASE_URL, model: VISION_MODEL, promptVersion: screenshot-v1 }
+  - { id: tool, provider: TOOL_AGENT_BASE_URL, model: TOOL_AGENT_MODEL, promptVersion: tool-v1 }
+replicas:
+  shop:
+    name: ShopTwin
+    contractDirectory: replicas/shop-twin/research/contracts
+    contractVersion: pilot-v1
+    journeys:
+      - { id: SHOP-J1, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SHOP-SESSION-001, maximumSteps: 30, timeoutSeconds: 120 }
+      - { id: SHOP-J2, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SHOP-AUTH-001, maximumSteps: 24, timeoutSeconds: 90 }
+      - { id: SHOP-J3, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SHOP-IDEMP-001, maximumSteps: 24, timeoutSeconds: 120 }
+  saas:
+    name: SaaSTwin
+    contractDirectory: replicas/saas-twin/research/contracts
+    contractVersion: pilot-v1
+    journeys:
+      - { id: SAAS-J1, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SAAS-SESSION-001, maximumSteps: 30, timeoutSeconds: 120 }
+      - { id: SAAS-J2, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SAAS-RECOVERY-001, maximumSteps: 24, timeoutSeconds: 90 }
+      - { id: SAAS-J3, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SAAS-CONFIRM-001, maximumSteps: 24, timeoutSeconds: 90 }
+      - { id: SAAS-J4, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SAAS-SCHEMA-001, maximumSteps: 24, timeoutSeconds: 90 }
+  support:
+    name: SupportTwin
+    contractDirectory: replicas/support-twin/research/contracts
+    contractVersion: pilot-v1
+    journeys:
+      - { id: SUPPORT-J1, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SUPPORT-SESSION-001, maximumSteps: 30, timeoutSeconds: 120 }
+      - { id: SUPPORT-J2, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SUPPORT-AUTH-001, maximumSteps: 30, timeoutSeconds: 120 }
+      - { id: SUPPORT-J3, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SUPPORT-CONFIRM-001, maximumSteps: 24, timeoutSeconds: 90 }
+      - { id: SUPPORT-J4, cleanAgent: scripted, defectAgent: scripted, deterministicDefectId: SUPPORT-INJECTION-001, maximumSteps: 30, timeoutSeconds: 120 }
+conditions:
+  clean:
+    defectConfiguration: {}
+    expectedOutcome: clean verifier success after scripted baseline
+  defect:
+    oneDeterministicDefectPerJourney: true
+    expectedOutcome: selected defect produces its documented failure or a captured verifier/safety failure
+notes:
+  - This is a pilot manifest, not a final preregistered study.
+  - Mock mode exercises deterministic orchestration and scripted baselines without live model claims.
+  - Live mode is skipped unless provider API keys are configured.

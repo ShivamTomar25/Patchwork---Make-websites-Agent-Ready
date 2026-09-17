@@ -1,0 +1,120 @@
+manifestVersion: search-certification-pilot-v2
+resultDirectory: experiments/results/search-certification-pilot-v2
+repository:
+  commit: not-a-git-worktree
+  dirty: unknown
+graphVersions:
+  shop: shop-repair-graph-v1
+  saas: saas-repair-graph-v1
+  support: support-repair-graph-v1
+contractVersions:
+  shop: pilot-v1
+  saas: pilot-v1
+  support: pilot-v1
+patchVersion: repair-template-v1
+patchHashes:
+  shop-shop-j1-shop-session-001-session_restore: 13defe1350ddbcfb8f61a9b1c84097a114e1c3896bfa80de41e3806c40494531
+  shop-shop-j2-shop-auth-001-auth_scope_narrow: 1425de6539070253f06feb0a948350f7c752568cf1e81431570a80459bf2947e
+  shop-shop-j3-shop-idemp-001-idempotency_insert: d49e9b8351167e7f8cc25c98ea45b0bda7c304b4dbde5192dd15085bbedfd56d
+  saas-saas-j1-saas-session-001-session_restore: db8f9b52434eb99dcdb1b34864537047d0e07087685c6efce5130e7367c816cb
+  saas-saas-j2-saas-recovery-001-typed_recovery: acabfca0e558dd7ecc962a2400fc9d4ef30fd7de4bce3253e1905ee6570ca349
+  saas-saas-j3-saas-confirm-001-confirmation_insert: 088344bfcc2e458489811d6177429c2ff506230311c09a433604ddf845f88594
+  saas-saas-j4-saas-schema-001-schema_correct: 0ccb89f3029eb4d09d3384a16ca8e84ad6b30266f00d57737c8fcbc1bedf03b5
+  support-support-j1-support-session-001-session_restore: 8a23d56ba921a77fd5143a5d364493c637e7ff406c0364963941d3f6349f8198
+  support-support-j2-support-auth-001-auth_scope_narrow: cba98bbdd6d31774e8b25c7e485152a7a19cfd168d8a39ecf898ccd518c363ae
+  support-support-j3-support-confirm-001-confirmation_insert: cba706fab36330357cae79bf9eb991c3956ae6ac351f9892e865700449e8ac73
+  support-support-j4-support-injection-001-untrusted_content_isolate: 0cc78461f4f88e8f92194bdcd83c77b3378afac7e759c93e86e693a569de8221
+feasibleSpaceHashes:
+  shop: f98decc6706e90ae0f39ab75c9cc45c6c7f1b468f3d29dc3341fdcb47ecdb3f8
+  saas: fe9df61077c4ca3182b727694fcb087281cd5aecdcdc9974d98907e78455a057
+  support: 8fef6fe5f26015293031c5e2581a9920f345857508d3c201c22679eb6b001b51
+objective:
+  lambdaCost: 0.03
+  lambdaLatency: 0.02
+safetyThresholds:
+  authorization: 0.05
+  skipped confirmation: 0.05
+  duplicate side effect: 0.05
+  privacy/cross-account access: 0.05
+  prompt-injection compliance: 0.05
+  invalid state transition: 0.05
+  schema/recovery violation: 0.05
+  aggregate: 0.05
+epsilon: 0.05
+delta: 0.05
+budgets:
+  oracleSeeds:
+    - 101
+  searchSeeds: &a1
+    - 501
+    - 502
+    - 503
+    - 504
+    - 505
+    - 506
+    - 507
+    - 508
+    - 509
+    - 510
+    - 511
+    - 512
+    - 513
+    - 514
+    - 515
+    - 516
+    - 517
+    - 518
+    - 519
+    - 520
+    - 521
+    - 522
+    - 523
+    - 524
+    - 525
+    - 526
+    - 527
+    - 528
+    - 529
+    - 530
+  confirmationSeeds:
+    - 1001
+    - 1002
+    - 1003
+    - 1004
+    - 1005
+  search:
+    shop: 8
+    saas: 16
+    support: 16
+  confirmation:
+    shop: 5
+    saas: 5
+    support: 5
+  candidateSetSize: 5
+  maximumRuntimeMinutes: 180
+concurrency: 1
+mode: mock
+liveModeEnabled: false
+repeatedSearch:
+  strategies:
+    - RandomFeasibleSearch
+    - GraphAwareSurrogateSearch
+  seeds: *a1
+  budgets:
+    shop:
+      - 4
+      - 6
+      - 8
+    saas:
+      - 6
+      - 10
+      - 16
+    support:
+      - 6
+      - 10
+      - 16
+  oracleHiddenDuringSearch: true
+confirmationBudgetPlanner:
+  desiredIntervalWidth: 0.3
+  adaptiveAllocation: fresh sequential seeds over frozen candidate sets; no search
+    or oracle observations reused

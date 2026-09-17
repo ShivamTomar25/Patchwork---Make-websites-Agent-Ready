@@ -1,0 +1,35 @@
+{
+  "name": "@patchwork/search-certification",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build-space": "node ../scripts/search-certification-run.mjs build-space",
+    "validate-space": "node ../scripts/search-certification-run.mjs validate-space",
+    "oracle": "node ../scripts/search-certification-run.mjs oracle",
+    "oracle:resume": "node ../scripts/search-certification-run.mjs oracle --resume",
+    "search": "node ../scripts/search-certification-run.mjs search",
+    "search:resume": "node ../scripts/search-certification-run.mjs search --resume",
+    "confirmation": "node ../scripts/search-certification-run.mjs confirmation",
+    "confirmation:resume": "node ../scripts/search-certification-run.mjs confirmation --resume",
+    "pilot": "node ../scripts/search-certification-run.mjs pilot",
+    "v2:audit-search": "node ../scripts/search-certification-run.mjs v2:audit-search",
+    "v2:confirmation": "node ../scripts/search-certification-run.mjs v2:confirmation",
+    "v2:pilot": "node ../scripts/search-certification-run.mjs v2:pilot",
+    "confirmation:v2:full": "node ../scripts/search-certification-run.mjs confirmation:v2:full",
+    "confirmation:v2:resume": "node ../scripts/search-certification-run.mjs confirmation:v2:resume",
+    "confirmation:v2:status": "node ../scripts/search-certification-run.mjs confirmation:v2:status",
+    "confirmation:v2:report": "node ../scripts/search-certification-run.mjs confirmation:v2:report"
+  },
+  "dependencies": {
+    "@patchwork/repair": "0.1.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

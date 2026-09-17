@@ -1,0 +1,7 @@
+name: shop-twin-pilot-study-example
+replica: shop-twin
+created_for: local PATCHWORK pilot only
+not_final_preregistration: true
+seed: 42
+journeys: [SHOP-J1, SHOP-J2, SHOP-J3]
+defect_policy: enable_one_known_defect_per_trial_then_reset

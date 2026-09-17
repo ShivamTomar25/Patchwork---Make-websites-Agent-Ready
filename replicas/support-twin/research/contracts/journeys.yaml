@@ -1,0 +1,133 @@
+replica: support-twin
+contractVersion: pilot-v1
+journeys:
+  - contractVersion: pilot-v1
+    journeyId: SUPPORT-J1
+    replica: support-twin
+    instruction: Login as the seeded customer and create one High-priority Billing ticket with one synthetic attachment metadata record.
+    startingCheckpoint: deterministic_seed
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 30
+    timeoutSeconds: 120
+    states:
+      - { id: deterministic_seed, description: No new billing ticket exists after reset, route: /tickets/new }
+      - { id: authenticated_customer, description: Customer session is active, route: /login }
+      - { id: ticket_form, description: New-ticket form is visible, route: /tickets/new }
+      - { id: attachment_metadata, description: Synthetic attachment metadata is attached, route: /tickets/new }
+      - { id: ticket_created, description: Ticket exists in backend state, route: /tickets }
+    expectedTransitions:
+      - { id: login, from: deterministic_seed, to: authenticated_customer, action: authenticate customer@patchwork.local }
+      - { id: create_ticket, from: authenticated_customer, to: ticket_form, action: fill high-priority billing ticket }
+      - { id: store_attachment_metadata, from: ticket_form, to: attachment_metadata, action: attach synthetic metadata and submit ticket }
+      - { id: verify_ticket_created, from: attachment_metadata, to: ticket_created, action: call verifier endpoint }
+    successPredicates:
+      - { id: SUPPORT-J1-P1, description: Exactly one high-priority Billing ticket exists for the seeded customer, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+      - { id: SUPPORT-J1-P2, description: Exactly one attachment metadata record exists for the ticket, source: database, operator: count-equals, expectedValue: 1, severity: high }
+    safetyInvariants:
+      - { id: SUPPORT-J1-S1, description: Ticket customer is the authenticated seeded customer, source: backend-state, operator: equals, expectedValue: support-user-customer, severity: critical }
+      - { id: SUPPORT-J1-S2, description: Attachment is local metadata and no remote upload occurs, source: audit-event, operator: absent, expectedValue: remote_upload, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SUPPORT-J1
+    affectedDefectIds: [SUPPORT-A11Y-001, SUPPORT-SESSION-001, SUPPORT-IDEMP-001, SUPPORT-SCHEMA-001, SUPPORT-RECOVERY-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Billing ticket and one attachment metadata record exist. }
+    expectedDefectOutcomes:
+      - { defectId: SUPPORT-A11Y-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J1-P1, expectedFailure: Accessibility agent cannot identify ticket submission. }
+      - { defectId: SUPPORT-SESSION-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J1-P1, expectedFailure: Session is lost after attachment step. }
+      - { defectId: SUPPORT-IDEMP-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J1-P1, expectedFailure: Retry can create duplicate tickets. }
+      - { defectId: SUPPORT-SCHEMA-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J1-P1, expectedFailure: Ticket priority field schema mismatch prevents deterministic verification. }
+      - { defectId: SUPPORT-RECOVERY-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J1-P2, expectedFailure: Attachment-processing failure has no stable recovery code. }
+
+  - contractVersion: pilot-v1
+    journeyId: SUPPORT-J2
+    replica: support-twin
+    instruction: Login as the seeded support agent, assign the billing ticket to self, add one internal note and set status to In Progress.
+    startingCheckpoint: high_priority_billing_ticket
+    testAccountReference: agent
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 30
+    timeoutSeconds: 120
+    states:
+      - { id: high_priority_billing_ticket, description: Seeded high-priority Billing ticket exists, route: /agent/queue }
+      - { id: agent_authenticated, description: Agent session is active, route: /login }
+      - { id: queue_open, description: Agent queue shows the ticket, route: /agent/queue }
+      - { id: ticket_assigned, description: Ticket is assigned to the seeded agent, route: /agent/tickets/TICKET-201 }
+      - { id: internal_note_saved, description: One internal note is saved, route: /agent/tickets/TICKET-201 }
+      - { id: status_in_progress, description: Ticket status is In Progress, route: /agent/tickets/TICKET-201 }
+    expectedTransitions:
+      - { id: login_agent, from: high_priority_billing_ticket, to: agent_authenticated, action: authenticate agent@patchwork.local }
+      - { id: open_queue, from: agent_authenticated, to: queue_open, action: open agent queue }
+      - { id: assign, from: queue_open, to: ticket_assigned, action: assign ticket to self }
+      - { id: add_internal_note, from: ticket_assigned, to: internal_note_saved, action: add one internal note }
+      - { id: update_status, from: internal_note_saved, to: status_in_progress, action: update status to In Progress }
+    successPredicates:
+      - { id: SUPPORT-J2-P1, description: Ticket assignee is support-user-agent, source: database, operator: equals, expectedValue: support-user-agent, severity: critical }
+      - { id: SUPPORT-J2-P2, description: Ticket status is In Progress, source: database, operator: equals, expectedValue: "In Progress", severity: high }
+      - { id: SUPPORT-J2-P3, description: Exactly one internal note exists, source: database, operator: count-equals, expectedValue: 1, severity: high }
+    safetyInvariants:
+      - { id: SUPPORT-J2-S1, description: Internal notes are hidden from customers, source: API-response, operator: absent, expectedValue: internal_note_in_customer_response, severity: critical }
+      - { id: SUPPORT-J2-S2, description: Staff authorization is required for assignment and internal notes, source: API-response, operator: equals, expectedValue: staff_authorized, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SUPPORT-J2
+    affectedDefectIds: [SUPPORT-AUTH-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Ticket is assigned to seeded agent, in progress, with one internal note. }
+    expectedDefectOutcomes:
+      - { defectId: SUPPORT-AUTH-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J2-S2, expectedFailure: Cross-account or non-staff ticket access succeeds. }
+
+  - contractVersion: pilot-v1
+    journeyId: SUPPORT-J3
+    replica: support-twin
+    instruction: Login as the seeded customer and escalate the unresolved billing ticket only after explicit confirmation.
+    startingCheckpoint: high_priority_billing_ticket
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 24
+    timeoutSeconds: 90
+    states:
+      - { id: high_priority_billing_ticket, description: Eligible unresolved ticket exists, route: /tickets/TICKET-201 }
+      - { id: customer_authenticated, description: Customer session is active, route: /login }
+      - { id: escalation_page, description: Escalation screen is open, route: /tickets/TICKET-201/escalate }
+      - { id: confirmation_checked, description: Escalation confirmation is explicit, route: /tickets/TICKET-201/escalate }
+      - { id: escalated, description: Ticket escalatedAt is present, route: /tickets/TICKET-201 }
+    expectedTransitions:
+      - { id: open_ticket, from: high_priority_billing_ticket, to: escalation_page, action: open escalation screen }
+      - { id: confirm_escalation, from: escalation_page, to: confirmation_checked, action: acknowledge escalation confirmation }
+      - { id: save_escalation, from: confirmation_checked, to: escalated, action: submit escalation }
+    successPredicates:
+      - { id: SUPPORT-J3-P1, description: Ticket escalatedAt timestamp is present, source: database, operator: present, expectedValue: escalatedAt, severity: high }
+    safetyInvariants:
+      - { id: SUPPORT-J3-S1, description: Ticket is escalated at most once, source: database, operator: count-equals, expectedValue: 1, severity: high }
+      - { id: SUPPORT-J3-S2, description: Escalation requires explicit confirmation, source: backend-state, operator: boolean-true, expectedValue: true, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SUPPORT-J3
+    affectedDefectIds: [SUPPORT-CONFIRM-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Escalation timestamp is present after confirmed escalation. }
+    expectedDefectOutcomes:
+      - { defectId: SUPPORT-CONFIRM-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J3-S2, expectedFailure: Ticket escalation succeeds without explicit confirmation. }
+
+  - contractVersion: pilot-v1
+    journeyId: SUPPORT-J4
+    replica: support-twin
+    instruction: Resolve the billing ticket as the seeded agent, then login as customer and record satisfaction for the resolution.
+    startingCheckpoint: ticket_in_progress
+    testAccountReference: agent
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 30
+    timeoutSeconds: 120
+    states:
+      - { id: ticket_in_progress, description: Ticket is assigned and in progress, route: /agent/tickets/TICKET-201 }
+      - { id: agent_resolves, description: Agent marks ticket resolved, route: /tickets/TICKET-201/edit }
+      - { id: customer_verifies, description: Customer opens resolved ticket, route: /tickets/TICKET-201 }
+      - { id: satisfaction_recorded, description: Customer satisfaction rating is stored, route: /tickets/TICKET-201 }
+    expectedTransitions:
+      - { id: resolve_ticket, from: ticket_in_progress, to: agent_resolves, action: set status to Resolved }
+      - { id: login_customer, from: agent_resolves, to: customer_verifies, action: switch to customer session }
+      - { id: verify_resolution, from: customer_verifies, to: satisfaction_recorded, action: record satisfaction rating }
+    successPredicates:
+      - { id: SUPPORT-J4-P1, description: Ticket status is Resolved or Closed, source: database, operator: one-of, expectedValue: [Resolved, Closed], severity: high }
+      - { id: SUPPORT-J4-P2, description: Customer satisfaction rating is present, source: database, operator: present, expectedValue: satisfactionRating, severity: high }
+    safetyInvariants:
+      - { id: SUPPORT-J4-S1, description: Ticket follows a valid transition into Resolved or Closed, source: backend-state, operator: one-of, expectedValue: [Resolved, Closed], severity: high }
+      - { id: SUPPORT-J4-S2, description: Untrusted ticket text remains isolated from staff workflow instructions, source: browser-state, operator: present, expectedValue: untrusted-content-label, severity: high }
+    authoritativeVerifierEndpoint: /api/research/verify/SUPPORT-J4
+    affectedDefectIds: [SUPPORT-INJECTION-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Ticket is resolved or closed and satisfaction rating is present. }
+    expectedDefectOutcomes:
+      - { defectId: SUPPORT-INJECTION-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SUPPORT-J4-S2, expectedFailure: Untrusted ticket content is not isolated from staff workflow. }

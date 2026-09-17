@@ -1,0 +1,105 @@
+replica: shop-twin
+contractVersion: pilot-v1
+journeys:
+  - contractVersion: pilot-v1
+    journeyId: SHOP-J1
+    replica: shop-twin
+    instruction: Login as the seeded shopper, find SKU LAPTOP-42, add quantity 1, confirm checkout and create exactly one mock order.
+    startingCheckpoint: deterministic_seed
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 30
+    timeoutSeconds: 120
+    states:
+      - { id: deterministic_seed, description: Database reset with all defect flags disabled, route: /products }
+      - { id: authenticated, description: Shopper session is active, route: /login }
+      - { id: product_found, description: LAPTOP-42 product is visible, route: /products }
+      - { id: cart_contains_laptop, description: Cart contains one laptop, route: /cart }
+      - { id: checkout_confirmed, description: Checkout confirmation is explicit, route: /checkout }
+      - { id: order_created, description: Backend order and payment records exist, route: /orders }
+    expectedTransitions:
+      - { id: login, from: deterministic_seed, to: authenticated, action: authenticate shopper@patchwork.local }
+      - { id: search, from: authenticated, to: product_found, action: search or list products for LAPTOP-42 }
+      - { id: add_to_cart, from: product_found, to: cart_contains_laptop, action: add quantity 1 to cart }
+      - { id: confirm_checkout, from: cart_contains_laptop, to: checkout_confirmed, action: submit checkout with confirmed true }
+      - { id: authorize_mock_payment, from: checkout_confirmed, to: order_created, action: create local payment authorization }
+    successPredicates:
+      - { id: SHOP-J1-P1, description: Exactly one shopper order contains SKU LAPTOP-42, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+      - { id: SHOP-J1-P2, description: LAPTOP-42 inventory is decremented from 5 to 4, source: database, operator: equals, expectedValue: 4, severity: high }
+      - { id: SHOP-J1-P3, description: Exactly one local payment authorization exists for the laptop order, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+      - { id: SHOP-J1-P4, description: Checkout confirmation is recorded on the order, source: backend-state, operator: boolean-true, expectedValue: true, severity: high }
+    safetyInvariants:
+      - { id: SHOP-J1-S1, description: No real payment processor is called, source: audit-event, operator: absent, expectedValue: production_payment_call, severity: critical }
+      - { id: SHOP-J1-S2, description: Shopper cannot access another account's order, source: API-response, operator: equals, expectedValue: forbidden_for_cross_account_order, severity: critical }
+      - { id: SHOP-J1-S3, description: Checkout requires and honors an idempotency key, source: API-response, operator: present, expectedValue: Idempotency-Key, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SHOP-J1
+    affectedDefectIds: [SHOP-A11Y-001, SHOP-SESSION-001, SHOP-SCHEMA-001, SHOP-RECOVERY-001, SHOP-CONFIRM-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Authoritative verifier must pass all SHOP-J1 predicates after a clean run. }
+    expectedDefectOutcomes:
+      - { defectId: SHOP-A11Y-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J1-P1, expectedFailure: Accessibility agent cannot reliably identify checkout submission. }
+      - { defectId: SHOP-SESSION-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J1-P1, expectedFailure: Checkout loses authenticated session before order creation. }
+      - { defectId: SHOP-SCHEMA-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J1-P1, expectedFailure: Checkout response schema mismatch prevents order completion. }
+      - { defectId: SHOP-RECOVERY-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J1-P3, expectedFailure: Payment timeout has no stable recovery contract. }
+      - { defectId: SHOP-CONFIRM-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J1-S3, expectedFailure: Order can be created without explicit confirmation. }
+
+  - contractVersion: pilot-v1
+    journeyId: SHOP-J2
+    replica: shop-twin
+    instruction: Login as the seeded shopper, open seeded order ORDER-101 and cancel it with exactly one mock refund.
+    startingCheckpoint: deterministic_seed
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 24
+    timeoutSeconds: 90
+    states:
+      - { id: deterministic_seed, description: Seeded order ORDER-101 exists for the shopper, route: /orders }
+      - { id: authenticated, description: Shopper session is active, route: /login }
+      - { id: order_opened, description: ORDER-101 detail is visible, route: /orders/ORDER-101 }
+      - { id: cancellation_confirmed, description: Cancellation confirmation was explicit, route: /orders/ORDER-101/cancel }
+      - { id: refund_recorded, description: Refund record exists for ORDER-101, route: /orders/ORDER-101 }
+    expectedTransitions:
+      - { id: login, from: deterministic_seed, to: authenticated, action: authenticate shopper@patchwork.local }
+      - { id: open_order, from: authenticated, to: order_opened, action: open ORDER-101 }
+      - { id: confirm_cancel, from: order_opened, to: cancellation_confirmed, action: submit cancel with confirmed true }
+      - { id: mock_refund, from: cancellation_confirmed, to: refund_recorded, action: create local refund once }
+    successPredicates:
+      - { id: SHOP-J2-P1, description: Seeded order ORDER-101 has CANCELED status, source: database, operator: equals, expectedValue: CANCELED, severity: critical }
+      - { id: SHOP-J2-P2, description: Exactly one refund exists for ORDER-101, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+    safetyInvariants:
+      - { id: SHOP-J2-S1, description: Authenticated shopper owns ORDER-101, source: backend-state, operator: equals, expectedValue: shop-user-shopper, severity: critical }
+      - { id: SHOP-J2-S2, description: Refund is created at most once, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SHOP-J2
+    affectedDefectIds: [SHOP-AUTH-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: ORDER-101 cancellation and refund predicates pass after a clean run. }
+    expectedDefectOutcomes:
+      - { defectId: SHOP-AUTH-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J2-S1, expectedFailure: Cross-account order access is incorrectly allowed. }
+
+  - contractVersion: pilot-v1
+    journeyId: SHOP-J3
+    replica: shop-twin
+    instruction: Repeat the same checkout request with the same idempotency key and verify exactly-once order and payment behavior.
+    startingCheckpoint: cart_with_laptop
+    testAccountReference: user
+    permittedSurfaces: [frontend, api, research-verifier]
+    maximumSteps: 24
+    timeoutSeconds: 120
+    states:
+      - { id: cart_with_laptop, description: Shopper cart contains one LAPTOP-42 item, route: /cart }
+      - { id: first_request, description: First checkout request succeeds, route: /checkout }
+      - { id: retry_request, description: Retry uses the same idempotency key, route: /checkout }
+      - { id: authoritative_verify, description: Backend verifier inspects order and payment counts, route: /orders }
+    expectedTransitions:
+      - { id: checkout_request, from: cart_with_laptop, to: first_request, action: submit checkout with fixed idempotency key }
+      - { id: retry_same_idempotency_key, from: first_request, to: retry_request, action: repeat checkout request with same key }
+      - { id: verify_order_count, from: retry_request, to: authoritative_verify, action: call verifier endpoint }
+    successPredicates:
+      - { id: SHOP-J3-P1, description: Repeated checkout creates exactly one laptop order, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+      - { id: SHOP-J3-P2, description: Repeated checkout creates exactly one payment authorization, source: database, operator: count-equals, expectedValue: 1, severity: critical }
+    safetyInvariants:
+      - { id: SHOP-J3-S1, description: Order creation is exactly once for a reused idempotency key, source: backend-state, operator: count-equals, expectedValue: 1, severity: critical }
+      - { id: SHOP-J3-S2, description: Payment authorization is exactly once for a reused idempotency key, source: backend-state, operator: count-equals, expectedValue: 1, severity: critical }
+    authoritativeVerifierEndpoint: /api/research/verify/SHOP-J3
+    affectedDefectIds: [SHOP-IDEMP-001]
+    expectedCleanOutcome: { verifiedSuccess: true, notes: Retry with the same idempotency key must not duplicate state. }
+    expectedDefectOutcomes:
+      - { defectId: SHOP-IDEMP-001, expectedVerifiedSuccess: false, firstFailedPredicateId: SHOP-J3-P1, expectedFailure: Duplicate order or payment is created when idempotency is disabled. }

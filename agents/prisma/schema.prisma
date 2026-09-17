@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Run {
+  runId               String     @id @map("run_id")
+  site                String
+  journeyId           String     @map("journey_id")
+  agentId             String     @map("agent_id")
+  provider            String
+  model               String
+  promptVersion       String     @map("prompt_version")
+  seed                Int
+  defectConfiguration Json       @map("defect_configuration")
+  startedAt           DateTime   @map("started_at")
+  endedAt             DateTime?  @map("ended_at")
+  terminationReason   String?    @map("termination_reason")
+  verifiedSuccess     Boolean?   @map("verified_success")
+  violations          Json
+  latencyMs           Int        @default(0) @map("latency_ms")
+  inputTokens         Int        @default(0) @map("input_tokens")
+  outputTokens        Int        @default(0) @map("output_tokens")
+  steps               Step[]
+  artifacts           Artifact[]
+
+  @@index([site, journeyId, agentId])
+  @@index([startedAt])
+  @@map("runs")
+}
+
+model Step {
+  stepId                String     @id @map("step_id")
+  runId                 String     @map("run_id")
+  sequenceNumber        Int        @map("sequence_number")
+  url                   String
+  observationHash       String     @map("observation_hash")
+  observationSummary    String     @map("observation_summary")
+  actionType            String     @map("action_type")
+  actionPayloadRedacted Json       @map("action_payload_redacted")
+  decisionReason        String     @map("decision_reason")
+  actionResult          Json       @map("action_result")
+  verifierState         Json?      @map("verifier_state")
+  latencyMs             Int        @default(0) @map("latency_ms")
+  inputTokens           Int        @default(0) @map("input_tokens")
+  outputTokens          Int        @default(0) @map("output_tokens")
+  createdAt             DateTime   @default(now()) @map("created_at")
+  run                   Run        @relation(fields: [runId], references: [runId], onDelete: Cascade)
+  artifacts             Artifact[]
+
+  @@unique([runId, sequenceNumber])
+  @@index([runId])
+  @@map("steps")
+}
+
+model Artifact {
+  artifactId String   @id @map("artifact_id")
+  runId      String   @map("run_id")
+  stepId     String?  @map("step_id")
+  type       String
+  localPath  String   @map("local_path")
+  sha256     String
+  metadata   Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  run        Run      @relation(fields: [runId], references: [runId], onDelete: Cascade)
+  step       Step?    @relation(fields: [stepId], references: [stepId], onDelete: SetNull)
+
+  @@index([runId])
+  @@index([stepId])
+  @@map("artifacts")
+}

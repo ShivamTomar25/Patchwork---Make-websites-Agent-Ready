@@ -1,0 +1,13 @@
+replica: support-twin
+baseline: clean
+expected:
+  SUPPORT-J1:
+    verifiedSuccess: true
+  SUPPORT-J2:
+    verifiedSuccess: true
+  SUPPORT-J3:
+    verifiedSuccess: true
+  SUPPORT-J4:
+    verifiedSuccess: true
+failure_examples:
+  SUPPORT-SESSION-001: ticket creation with attachment loses session

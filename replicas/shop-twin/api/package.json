@@ -1,0 +1,18 @@
+{
+  "name": "@patchwork/shop-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "DATABASE_URL=${SHOP_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_shop} PORT=4101 node --import tsx src/index.ts",
+    "build": "DATABASE_URL=${SHOP_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_shop} tsc --noEmit",
+    "prisma:generate": "DATABASE_URL=${SHOP_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_shop} prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "DATABASE_URL=${SHOP_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_shop} prisma migrate deploy --schema prisma/schema.prisma",
+    "seed": "DATABASE_URL=${SHOP_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_shop} node --import tsx src/seed.ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@patchwork/api-kit": "0.1.0",
+    "@patchwork/shared": "0.1.0"
+  }
+}

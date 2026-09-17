@@ -1,0 +1,18 @@
+{
+  "name": "@patchwork/saas-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "DATABASE_URL=${SAAS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_saas} PORT=4102 node --import tsx src/index.ts",
+    "build": "DATABASE_URL=${SAAS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_saas} tsc --noEmit",
+    "prisma:generate": "DATABASE_URL=${SAAS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_saas} prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "DATABASE_URL=${SAAS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_saas} prisma migrate deploy --schema prisma/schema.prisma",
+    "seed": "DATABASE_URL=${SAAS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_saas} node --import tsx src/seed.ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@patchwork/api-kit": "0.1.0",
+    "@patchwork/shared": "0.1.0"
+  }
+}

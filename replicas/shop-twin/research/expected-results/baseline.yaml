@@ -1,0 +1,11 @@
+replica: shop-twin
+baseline: clean
+expected:
+  SHOP-J1:
+    verifiedSuccess: true
+  SHOP-J2:
+    verifiedSuccess: true
+  SHOP-J3:
+    verifiedSuccess: true
+failure_examples:
+  SHOP-IDEMP-001: repeated checkout can create duplicate orders

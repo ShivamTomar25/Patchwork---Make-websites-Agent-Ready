@@ -1,0 +1,31 @@
+# Deploys the central platform API only. See docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: patchwork-api
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run build -w @patchwork/platform-api
+    preDeployCommand: npm run db:migrate -w @patchwork/platform-api
+    startCommand: npm run start -w @patchwork/platform-api
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: patchwork-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: PATCHWORK_INTERNAL_AGENT_TOKEN
+        generateValue: true
+      - key: WEB_URL
+        sync: false
+databases:
+  - name: patchwork-db
+    plan: basic-256mb
+    databaseName: patchwork_platform

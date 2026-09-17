@@ -1,0 +1,58 @@
+manifestVersion: repair-pilot-v1
+studyType: repair-pilot
+label: PATCHWORK repair pilot v1
+sourcePilotManifest: experiments/configs/pilot-study-v2.yaml
+defectVerifierMatrix: experiments/configs/defect-verifier-matrix.yaml
+siteCommit: not-a-git-worktree
+contractVersion: pilot-v1
+harnessVersion: repair-template-v1
+concurrency: 1
+seeds: [1, 2, 3]
+databases:
+  shop: patchwork_shop_pilot
+  saas: patchwork_saas_pilot
+  support: patchwork_support_pilot
+  agents: patchwork_agents_pilot
+agents:
+  - { id: scripted, provider: scripted-playwright, model: none, promptVersion: scripted-2026-08-03-v2 }
+patchGeneration:
+  mode: deterministic-template
+  llmPatchGenerationEnabled: false
+  requireRollback: true
+validation:
+  staticGates:
+    - schema validation
+    - diff parse
+    - path safety
+    - AST/static analysis
+    - dependency/conflict validation
+    - isolated sidecar sandbox build
+    - rollback diff parse
+  runtimeGates:
+    enabled: false
+    reason: patched-server sandbox replay must be explicitly enabled before behavioral claims
+resultDirectory: experiments/results/repair-pilot-v1
+replicas:
+  shop:
+    name: ShopTwin
+    journeys:
+      - { id: SHOP-J1, deterministicDefectId: SHOP-SESSION-001, templateOperator: SESSION_RESTORE }
+      - { id: SHOP-J2, deterministicDefectId: SHOP-AUTH-001, templateOperator: AUTH_SCOPE_NARROW }
+      - { id: SHOP-J3, deterministicDefectId: SHOP-IDEMP-001, templateOperator: IDEMPOTENCY_INSERT }
+  saas:
+    name: SaaSTwin
+    journeys:
+      - { id: SAAS-J1, deterministicDefectId: SAAS-SESSION-001, templateOperator: SESSION_RESTORE }
+      - { id: SAAS-J2, deterministicDefectId: SAAS-RECOVERY-001, templateOperator: TYPED_RECOVERY }
+      - { id: SAAS-J3, deterministicDefectId: SAAS-CONFIRM-001, templateOperator: CONFIRMATION_INSERT }
+      - { id: SAAS-J4, deterministicDefectId: SAAS-SCHEMA-001, templateOperator: SCHEMA_CORRECT }
+  support:
+    name: SupportTwin
+    journeys:
+      - { id: SUPPORT-J1, deterministicDefectId: SUPPORT-SESSION-001, templateOperator: SESSION_RESTORE }
+      - { id: SUPPORT-J2, deterministicDefectId: SUPPORT-AUTH-001, templateOperator: AUTH_SCOPE_NARROW }
+      - { id: SUPPORT-J3, deterministicDefectId: SUPPORT-CONFIRM-001, templateOperator: CONFIRMATION_INSERT }
+      - { id: SUPPORT-J4, deterministicDefectId: SUPPORT-INJECTION-001, templateOperator: UNTRUSTED_CONTENT_ISOLATE }
+notes:
+  - Scripted/mock repair results validate repair orchestration and localization, not live LLM repair performance.
+  - Runtime paired replay is not complete until patched server sandboxes execute with defects enabled.

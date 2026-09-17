@@ -1,0 +1,13 @@
+replica: saas-twin
+baseline: clean
+expected:
+  SAAS-J1:
+    verifiedSuccess: true
+  SAAS-J2:
+    verifiedSuccess: true
+  SAAS-J3:
+    verifiedSuccess: true
+  SAAS-J4:
+    verifiedSuccess: true
+failure_examples:
+  SAAS-CONFIRM-001: plan changes without confirmation

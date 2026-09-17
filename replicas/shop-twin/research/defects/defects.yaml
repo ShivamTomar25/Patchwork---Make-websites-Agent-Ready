@@ -1,0 +1,11 @@
+replica: shop-twin
+defects:
+  - SHOP-A11Y-001
+  - SHOP-SESSION-001
+  - SHOP-IDEMP-001
+  - SHOP-SCHEMA-001
+  - SHOP-RECOVERY-001
+  - SHOP-AUTH-001
+  - SHOP-CONFIRM-001
+control_endpoint: /api/research/defects
+baseline: all_disabled

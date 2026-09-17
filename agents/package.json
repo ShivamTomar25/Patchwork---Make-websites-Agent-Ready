@@ -1,0 +1,37 @@
+{
+  "name": "@patchwork/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "prisma:generate": "DATABASE_URL=${AGENTS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_agents} prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "DATABASE_URL=${AGENTS_DATABASE_URL:-postgresql://${USER:-postgres}@localhost:5432/patchwork_agents} prisma migrate deploy --schema prisma/schema.prisma && npm run prisma:generate",
+    "test": "vitest run --passWithNoTests",
+    "smoke": "tsx src/cli/index.ts smoke",
+    "run": "tsx src/cli/index.ts run",
+    "matrix": "tsx src/cli/index.ts matrix",
+    "research:validate-contracts": "tsx src/research/cli.ts validate-contracts",
+    "research:audit-defects": "tsx src/research/cli.ts audit-defects",
+    "research:pilot": "tsx src/research/cli.ts pilot",
+    "research:pilot:mock": "tsx src/research/cli.ts pilot --mode mock",
+    "research:report": "tsx src/research/cli.ts report",
+    "research:resume": "tsx src/research/cli.ts resume"
+  },
+  "dependencies": {
+    "@patchwork/shared": "0.1.0",
+    "@playwright/test": "^1.54.1",
+    "@prisma/client": "^6.13.0",
+    "playwright": "^1.54.1",
+    "yaml": "^2.6.1",
+    "zod": "^4.0.10"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,72 @@
+shop:
+  name: ShopTwin
+  frontendUrl: http://localhost:3101
+  apiUrl: http://localhost:4101
+  openapiUrl: http://localhost:4101/api/openapi.json
+  healthEndpoint: /api/health
+  resetEndpoint: /api/research/reset
+  stateEndpoint: /api/research/state
+  eventsEndpoint: /api/research/events
+  defectsEndpoint: /api/research/defects
+  verifierEndpointTemplate: /api/research/verify/{journeyId}
+  contractDirectory: replicas/shop-twin/research/contracts
+  allowedHosts:
+    - localhost:3101
+    - localhost:4101
+    - 127.0.0.1:3101
+    - 127.0.0.1:4101
+  credentials:
+    adminEmailEnv: PATCHWORK_SHOP_ADMIN_EMAIL
+    adminPasswordEnv: PATCHWORK_SHOP_ADMIN_PASSWORD
+    userEmailEnv: PATCHWORK_SHOP_USER_EMAIL
+    userPasswordEnv: PATCHWORK_SHOP_USER_PASSWORD
+
+saas:
+  name: SaaSTwin
+  frontendUrl: http://localhost:3102
+  apiUrl: http://localhost:4102
+  openapiUrl: http://localhost:4102/api/openapi.json
+  healthEndpoint: /api/health
+  resetEndpoint: /api/research/reset
+  stateEndpoint: /api/research/state
+  eventsEndpoint: /api/research/events
+  defectsEndpoint: /api/research/defects
+  verifierEndpointTemplate: /api/research/verify/{journeyId}
+  contractDirectory: replicas/saas-twin/research/contracts
+  allowedHosts:
+    - localhost:3102
+    - localhost:4102
+    - 127.0.0.1:3102
+    - 127.0.0.1:4102
+  credentials:
+    adminEmailEnv: PATCHWORK_SAAS_ADMIN_EMAIL
+    adminPasswordEnv: PATCHWORK_SAAS_ADMIN_PASSWORD
+    userEmailEnv: PATCHWORK_SAAS_USER_EMAIL
+    userPasswordEnv: PATCHWORK_SAAS_USER_PASSWORD
+    memberEmailEnv: PATCHWORK_SAAS_MEMBER_EMAIL
+    memberPasswordEnv: PATCHWORK_SAAS_MEMBER_PASSWORD
+
+support:
+  name: SupportTwin
+  frontendUrl: http://localhost:3103
+  apiUrl: http://localhost:4103
+  openapiUrl: http://localhost:4103/api/openapi.json
+  healthEndpoint: /api/health
+  resetEndpoint: /api/research/reset
+  stateEndpoint: /api/research/state
+  eventsEndpoint: /api/research/events
+  defectsEndpoint: /api/research/defects
+  verifierEndpointTemplate: /api/research/verify/{journeyId}
+  contractDirectory: replicas/support-twin/research/contracts
+  allowedHosts:
+    - localhost:3103
+    - localhost:4103
+    - 127.0.0.1:3103
+    - 127.0.0.1:4103
+  credentials:
+    adminEmailEnv: PATCHWORK_SUPPORT_ADMIN_EMAIL
+    adminPasswordEnv: PATCHWORK_SUPPORT_ADMIN_PASSWORD
+    userEmailEnv: PATCHWORK_SUPPORT_USER_EMAIL
+    userPasswordEnv: PATCHWORK_SUPPORT_USER_PASSWORD
+    agentEmailEnv: PATCHWORK_SUPPORT_AGENT_EMAIL
+    agentPasswordEnv: PATCHWORK_SUPPORT_AGENT_PASSWORD
