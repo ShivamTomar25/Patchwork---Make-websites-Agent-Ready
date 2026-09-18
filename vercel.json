@@ -5,7 +5,7 @@
   "buildCommand": "npm run build -w @patchwork/platform-web",
   "outputDirectory": "platform/web/dist",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://REPLACE-WITH-YOUR-RENDER-SERVICE.onrender.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://patchwork-make-websites-agent-ready.onrender.com/api/:path*" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
   ],
   "headers": [
