@@ -62,7 +62,10 @@ function Login() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const form = useForm<z.infer<typeof loginSchema>>({ resolver: zodResolver(loginSchema), defaultValues: { email: "demo@patchwork.local", password: "Patchwork123!" } });
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: import.meta.env.DEV ? { email: "demo@patchwork.local", password: "Patchwork123!" } : { email: "", password: "" }
+  });
   const mutation = useMutation({
     mutationFn: (body: z.infer<typeof loginSchema>) => api("/auth/login", { method: "POST", body }),
     onSuccess: async () => {
@@ -191,5 +194,5 @@ function titleFor(page: AuthPage) {
 }
 
 function subtitleFor(page: AuthPage) {
-  return page === "login" ? "Use the demo account or your workspace." : page === "signup" ? "A new organization is created with you as owner." : "Development mail is stored in the API outbox.";
+  return page === "login" ? (import.meta.env.DEV ? "Use the demo account or your workspace." : "Sign in with your workspace account.") : page === "signup" ? "A new organization is created with you as owner." : "Development mail is stored in the API outbox.";
 }
